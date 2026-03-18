@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:taxxon/services/database_service.dart';
 
 class AuthState {
   final bool isLoading;
@@ -29,7 +30,9 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(AuthState());
+  final DatabaseService _dbService;
+
+  AuthNotifier(this._dbService) : super(AuthState());
 
   void togglePasswordVisibility() {
     state = state.copyWith(isPasswordVisible: !state.isPasswordVisible);
@@ -38,17 +41,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> login(String username, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final user = await _dbService.getUser(username, password);
 
-    if (username.isNotEmpty && password.isNotEmpty) {
-      state = state.copyWith(isLoading: false, isAuthenticated: true);
-    } else {
+      if (user != null) {
+        state = state.copyWith(isLoading: false, isAuthenticated: true);
+      } else {
+        state = state.copyWith(
+          isLoading: false, 
+          isAuthenticated: false, 
+          errorMessage: "Invalid username or password",
+        );
+      }
+    } catch (e) {
       state = state.copyWith(
-        isLoading: false, 
-        isAuthenticated: false, 
-        errorMessage: "Please enter valid credentials",
+        isLoading: false,
+        errorMessage: "Database error: ${e.toString()}",
       );
+    }
+  }
+
+  Future<bool> signup(String username, String password) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final success = await _dbService.createUser(username, password);
+      state = state.copyWith(isLoading: false);
+      if (!success) {
+        state = state.copyWith(errorMessage: "Username already exists or database error");
+      }
+      return success;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: "Database error: ${e.toString()}",
+      );
+      return false;
     }
   }
 
@@ -57,6 +84,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
+final databaseServiceProvider = Provider((ref) => DatabaseService());
+
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  final dbService = ref.watch(databaseServiceProvider);
+  return AuthNotifier(dbService);
 });
