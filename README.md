@@ -4,12 +4,6 @@
 
 ---
 
-## 📱 Screenshots
-
-> _Add screenshots of the splash screen, login screen, and dashboard here._
-
----
-
 ## ✨ Features
 
 - **VAT Dashboard** — At-a-glance summary of Input VAT, Output VAT, and VAT Payable for the current quarter
